@@ -16,17 +16,23 @@ jobs:
 
       - name: Prepare offline web assets
         run: |
-          mkdir -p www css js/core js/api js/i18n js/views assets
-          cp index.html www/
-          cp app.css css/app.css
-          cp app.js js/app.js
-          cp main.js js/views/main.js
-          cp native.js js/api/native.js
-          cp state.js js/core/state.js
-          cp storage.js js/core/storage.js
-          cp strings.js js/i18n/strings.js
-          cp theme.js js/theme.js
-          cp icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png assets/
+          mkdir -p www/css www/js/core www/js/api www/js/i18n www/js/views www/assets
+          cp index.html www/index.html
+          cp app.css www/css/app.css
+          cp app.js www/js/app.js
+          cp main.js www/js/views/main.js
+          cp native.js www/js/api/native.js
+          cp state.js www/js/core/state.js
+          cp storage.js www/js/core/storage.js
+          cp strings.js www/js/i18n/strings.js
+          cp theme.js www/js/theme.js
+          cp icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png www/assets/
+          echo "Prepared Capacitor web root:"
+          find www -maxdepth 4 -type f -print | sort
+          test -s www/index.html
+          test -s www/css/app.css
+          test -s www/js/app.js
+          test -s www/js/views/main.js
 
       - uses: actions/setup-node@v4
         with:
