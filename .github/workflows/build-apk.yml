@@ -51,17 +51,17 @@ jobs:
 
       - name: Check offline web modules
         run: |
-          for f in js/app.js js/api/native.js js/core/storage.js js/core/state.js js/i18n/strings.js js/theme.js js/views/main.js; do node --check "$f"; done
+          for f in app.js native.js storage.js state.js strings.js theme.js main.js; do node --check "$f"; done
           python3 - <<'PYCODE'
           from pathlib import Path
           html = Path('pc.html').read_text(encoding='utf-8')
           script = html.split('<script>', 1)[1].split('</script>', 1)[0]
           Path('/tmp/airlink-pc.js').write_text(script, encoding='utf-8')
-          app = Path('js/app.js').read_text(encoding='utf-8')
+          app = Path('app.js').read_text(encoding='utf-8')
           assert 'Not encrypted:' in html
           assert 'DEMO' not in app
           assert 'fp=' in app and 'tls=' in app
-          assert Path('css/app.css').is_file() and Path('js/views/main.js').is_file()
+          assert Path('app.css').is_file() and Path('main.js').is_file()
           PYCODE
           node --check /tmp/airlink-pc.js
 
