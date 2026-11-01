@@ -1,0 +1,85 @@
+name: Build AirLink APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare offline web assets
+        run: |
+          mkdir -p www css js/core js/api js/i18n js/views assets
+          cp index.html www/
+          cp app.css css/app.css
+          cp app.js js/app.js
+          cp main.js js/views/main.js
+          cp native.js js/api/native.js
+          cp state.js js/core/state.js
+          cp storage.js js/core/storage.js
+          cp strings.js js/i18n/strings.js
+          cp theme.js js/theme.js
+          cp icon-only.png icon-foreground.png icon-background.png splash.png splash-dark.png assets/
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Test the sharing engine
+        run: |
+          mkdir -p /tmp/t
+          javac -d /tmp/t AirLinkSecurity.java LanServer.java LanClient.java Beacon.java AirTest.java
+          java -cp /tmp/t com.roohu.airlink.AirTest
+
+      - name: Check offline web modules
+        run: |
+          for f in js/app.js js/api/native.js js/core/storage.js js/core/state.js js/i18n/strings.js js/theme.js js/views/main.js; do node --check "$f"; done
+          python3 - <<'PYCODE'
+          from pathlib import Path
+          html = Path('pc.html').read_text(encoding='utf-8')
+          script = html.split('<script>', 1)[1].split('</script>', 1)[0]
+          Path('/tmp/airlink-pc.js').write_text(script, encoding='utf-8')
+          app = Path('js/app.js').read_text(encoding='utf-8')
+          assert 'Not encrypted:' in html
+          assert 'DEMO' not in app
+          assert 'fp=' in app and 'tls=' in app
+          assert Path('css/app.css').is_file() and Path('js/views/main.js').is_file()
+          PYCODE
+          node --check /tmp/airlink-pc.js
+
+      - run: npm install
+      - run: npx cap add android
+
+      - name: Add the Wi-Fi server code
+        run: |
+          D=android/app/src/main/java/com/roohu/airlink
+          mkdir -p "$D" android/app/src/main/assets
+          cp AirLinkSecurity.java LanServer.java LanClient.java Beacon.java LanSharePlugin.java ShareService.java MainActivity.java "$D"/
+          cp pc.html android/app/src/main/assets/pc.html
+          python3 patch_manifest.py android/app/src/main/AndroidManifest.xml
+
+      - run: npx capacitor-assets generate --android
+      - run: npx cap sync android
+
+      - name: Build APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AirLink-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
